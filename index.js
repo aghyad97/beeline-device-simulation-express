@@ -4,13 +4,19 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const morgan = require('morgan');
 const User = require('./models/user');
-
+const mongoose = require('mongoose');
+const path = require('path');
+const mqtt = require("mqtt")
+const mqttClient = mqtt.connect('ws://localhost:9001');
+mongoose.connect('mongodb://127.0.0.1:27017/beeline', { useNewUrlParser: true, useUnifiedTopology: true });
 // invoke an instance of express application.
 const app = express();
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.static(__dirname + '/public'));
 
 // set our application port
 app.set('port', 9000);
-
+app.set('view engine', 'ejs');
 // set morgan to log info about our requests for development use.
 app.use(morgan('dev'));
 
@@ -27,7 +33,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        expires: 600000
+        expires: 24 * 60 * 60 * 1000 * 30 // 24 hours * 30 = 30 days
     }
 }));
 
@@ -54,27 +60,29 @@ const sessionChecker = (req, res, next) => {
 
 // route for Home-Page
 app.get('/', sessionChecker, (req, res) => {
-    res.redirect('/login');
+    res.redirect('login');
 });
 
 
 // route for user signup
-app.route('/signup')
+app.route('/register')
     .get(sessionChecker, (req, res) => {
-        res.sendFile(__dirname + '/public/signup.html');
+        res.render('register');
     })
     .post((req, res) => {
         User.create({
-            username: req.body.username,
+            name: req.body.name,
             email: req.body.email,
             password: req.body.password
         })
         .then(user => {
+            console.log(user);
             req.session.user = user.dataValues;
-            res.redirect('/dashboard');
+            
+            res.redirect('/');
         })
         .catch(error => {
-            res.redirect('/signup');
+            res.redirect('/register');
         });
     });
 
@@ -82,19 +90,23 @@ app.route('/signup')
 // route for user Login
 app.route('/login')
     .get(sessionChecker, (req, res) => {
-        res.sendFile(__dirname + '/public/login.html');
+        res.render('login');
     })
     .post((req, res) => {
-        const username = req.body.username,
+        var email = req.body.email,
             password = req.body.password;
-
-        User.findOne({ where: { username: username } }).then(function (user) {
+        
+        User.findOne({ email: email}).then(function (user) {
             if (!user) {
+                console.log(user);
+                console.log('login failed');
                 res.redirect('/login');
             } else if (!user.validPassword(password)) {
+                console.log('password not matching');
                 res.redirect('/login');
             } else {
-                req.session.user = user.dataValues;
+                console.log('dashboard');
+                req.session.user = user._id;
                 res.redirect('/dashboard');
             }
         });
@@ -104,9 +116,19 @@ app.route('/login')
 // route for user's dashboard
 app.get('/dashboard', (req, res) => {
     if (req.session.user && req.cookies.user_sid) {
-        res.sendFile(__dirname + '/public/dashboard.html');
+        res.render('dashboard');
     } else {
-        res.redirect('/login');
+        res.render('login');
+    }
+});
+
+app.post('/dashboard', (req, res) => {
+    if (req.session.user && req.cookies.user_sid){
+        client.subscribe('arrow', function (err) {
+            if (!err) {
+              client.publish('coe457/hello', 'Hello COE457 from node.js')
+            }
+          })
     }
 });
 
@@ -127,6 +149,28 @@ app.use(function (req, res, next) {
   res.status(404).send("Sorry can't find that!")
 });
 
+mqttClient.on('connect', function () {
+    // subscribing to topic to get the coordinates
+    // Subscribes with QoS 0 (0 is default)
+    mqttClient.subscribe('coordinates', function (err) {
+        if (!err) {
+            console.log('Subscribed to coordinates topic');
+        }
+        else {
+            console.log(err);
+        }
+    });
+})
+
+mqttClient.on('message', function (topic, message) {
+    if (topic === 'coordinates') {
+		// make sure the topic is correct
+        var accJSON = JSON.parse(message.toString());
+        // do stuff with the accJSON
+    }
+})
+
+module.exports = mqttClient;
 
 // start the express server
 app.listen(app.get('port'), () => console.log(`App started on port ${app.get('port')}`));

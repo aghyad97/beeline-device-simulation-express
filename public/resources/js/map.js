@@ -1,5 +1,20 @@
 mapboxgl.accessToken = 'pk.eyJ1IjoiYWdoeWFkOTciLCJhIjoiY2tndGY5NGlmMGFvbTMwcGVoOGpyM3EyYiJ9.mrcXEjAbhp4pAq2yag7GFw';
 var current = new Array();
+
+var wsbroker = "localhost";  //mqtt websocket enabled broker
+var wsport = 9001 // port for above
+
+// create client using the Paho library
+var client = new Paho.MQTT.Client(wsbroker, wsport,
+    "myclientid_" + parseInt(Math.random() * 100, 10));
+client.onConnectionLost = function (responseObject) {
+    console.log("connection lost: " + responseObject.errorMessage);
+};
+
+
+function init() {
+    client.connect(options);
+}
 $(document).ready(function () {
 
   if ("geolocation" in navigator) {
@@ -40,18 +55,35 @@ $(document).ready(function () {
           var location2 = json.waypoints[1].location;
           var angle = angleFromCoordinate(location1[0], location1[1], location2[0], location2[1]);
           console.log(angle);
-          $.ajax(
-            {
-               type: "POST",
-               url: 'http://127.0.0.1:1337/',
-               data: {angle},
-               dataType: 'JSON',
-               success: function(data){
-                 console.log(data);
-                 console.log('success');
-               }
+          var options = {
+            timeout: 3,
+            onSuccess: function () {
+                console.log("mqtt connected");
+                // Connection succeeded; subscribe to our topic, you can add multile lines of these
+                client.subscribe("coe457/hello", { qos: 1 });
+        
+                //use the below if you want to publish to a topic on connect
+                message = new Paho.MQTT.Message(angle);
+                message.destinationName = "arrow";
+                client.send(message);
+        
+            },
+            onFailure: function (message) {
+                console.log("Connection failed: " + message.errorMessage);
             }
-         );
+        };
+        //   $.ajax(
+        //     {
+        //        type: "POST",
+        //        url: 'http://localhost:9001/dashboard',
+        //        data: {angle},
+        //        dataType: 'JSON',
+        //        success: function(data){
+        //          console.log(data);
+        //          console.log('success');
+        //        }
+        //     }
+        //  );
           var data = json.routes[0];
           var route = data.geometry.coordinates;
           var geojson = {
