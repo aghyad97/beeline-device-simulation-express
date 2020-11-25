@@ -122,6 +122,14 @@ app.get('/dashboard', (req, res) => {
     }
 });
 
+app.get('/arrow', (req, res) => {
+    if (req.session.user && req.cookies.user_sid) {
+        res.render('direction');
+    } else {
+        res.render('login');
+    }
+});
+
 app.post('/dashboard', (req, res) => {
     if (req.session.user && req.cookies.user_sid){
         client.subscribe('arrow', function (err) {

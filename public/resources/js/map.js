@@ -72,6 +72,8 @@ $(document).ready(function () {
                 console.log("Connection failed: " + message.errorMessage);
             }
         };
+        client.connect(options);
+
         //   $.ajax(
         //     {
         //        type: "POST",
@@ -265,6 +267,8 @@ $(document).ready(function () {
   } else {
 
   }
+
+
 });
 
 
