@@ -9,3 +9,17 @@ body{
 .map {
   height: 500px;
 }
+
+.cookie-notification {
+  display: none;
+  padding-right: 10px;
+  padding-left: 10px;
+
+  position: fixed;
+  bottom: 0;
+  left: 0;
+
+  /* Set your cookie notification bar styles here */ 
+  background-color: #fff;
+  opacity: 0.8;
+}

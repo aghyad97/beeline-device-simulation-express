@@ -1,20 +1,24 @@
 mapboxgl.accessToken = 'pk.eyJ1IjoiYWdoeWFkOTciLCJhIjoiY2tndGY5NGlmMGFvbTMwcGVoOGpyM3EyYiJ9.mrcXEjAbhp4pAq2yag7GFw';
 var current = new Array();
 
-var wsbroker = "localhost";  //mqtt websocket enabled broker
+var wsbroker = "localhost"; //mqtt websocket enabled broker
 var wsport = 9001 // port for above
 
 // create client using the Paho library
 var client = new Paho.MQTT.Client(wsbroker, wsport,
-    "myclientid_" + parseInt(Math.random() * 100, 10));
-client.onConnectionLost = function (responseObject) {
-    console.log("connection lost: " + responseObject.errorMessage);
+  "myclientid_" + parseInt(Math.random() * 100, 10));
+var options = {
+  timeout: 3,
+  onSuccess: function () {
+    console.log("mqtt connected");
+    // Connection succeeded; subscribe to our topic, you can add multile lines of these        
+    //use the below if you want to publish to a topic on connect
+
+  },
+  onFailure: function (message) {
+    console.log("Connection failed: " + message.errorMessage);
+  }
 };
-
-
-function init() {
-    client.connect(options);
-}
 $(document).ready(function () {
 
   if ("geolocation" in navigator) {
@@ -55,37 +59,10 @@ $(document).ready(function () {
           var location2 = json.waypoints[1].location;
           var angle = angleFromCoordinate(location1[0], location1[1], location2[0], location2[1]);
           console.log(angle);
-          var options = {
-            timeout: 3,
-            onSuccess: function () {
-                console.log("mqtt connected");
-                // Connection succeeded; subscribe to our topic, you can add multile lines of these
-                client.subscribe("coe457/hello", { qos: 1 });
-        
-                //use the below if you want to publish to a topic on connect
-                message = new Paho.MQTT.Message(angle);
-                message.destinationName = "arrow";
-                client.send(message);
-        
-            },
-            onFailure: function (message) {
-                console.log("Connection failed: " + message.errorMessage);
-            }
-        };
-        client.connect(options);
-
-        //   $.ajax(
-        //     {
-        //        type: "POST",
-        //        url: 'http://localhost:9001/dashboard',
-        //        data: {angle},
-        //        dataType: 'JSON',
-        //        success: function(data){
-        //          console.log(data);
-        //          console.log('success');
-        //        }
-        //     }
-        //  );
+          message = new Paho.MQTT.Message(String(angle));
+          message.destinationName = "coordinates";
+          client.send(message);
+         
           var data = json.routes[0];
           var route = data.geometry.coordinates;
           var geojson = {
@@ -133,7 +110,7 @@ $(document).ready(function () {
       map.on('load', function () {
         // make an initial directions request that
         // starts and ends at the same location
-          getRoute(start);
+        getRoute(start);
 
         // Add starting point to the map
         map.addLayer({
@@ -160,10 +137,10 @@ $(document).ready(function () {
         });
         // this is where the code from the next step will go
       });
-      map.on('click', function(e) {
+      map.on('click', function (e) {
         var coordsObj = e.lngLat;
         canvas.style.cursor = '';
-        var coords = Object.keys(coordsObj).map(function(key) {
+        var coords = Object.keys(coordsObj).map(function (key) {
           return coordsObj[key];
         });
         var end = {
@@ -175,8 +152,7 @@ $(document).ready(function () {
               type: 'Point',
               coordinates: coords
             }
-          }
-          ]
+          }]
         };
         if (map.getLayer('end')) {
           map.getSource('end').setData(end);
@@ -267,20 +243,20 @@ $(document).ready(function () {
   } else {
 
   }
-
+  client.connect(options);
 
 });
 
 
-function angleFromCoordinate(lat1,lon1,lat2,lon2) {
+function angleFromCoordinate(lat1, lon1, lat2, lon2) {
   var p1 = {
-      x: lat1,
-      y: lon1
+    x: lat1,
+    y: lon1
   };
 
   var p2 = {
-      x: lat2,
-      y: lon2
+    x: lat2,
+    y: lon2
   };
   // angle in radians
   var angleRadians = Math.atan2(p2.y - p1.y, p2.x - p1.x);
@@ -288,5 +264,5 @@ function angleFromCoordinate(lat1,lon1,lat2,lon2) {
   var angleDeg = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
 
   return angleDeg;
-  
+
 }

@@ -4,11 +4,16 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const morgan = require('morgan');
 const User = require('./models/user');
+const Angle = require('./models/angle');
 const mongoose = require('mongoose');
 const path = require('path');
-const mqtt = require("mqtt")
-const mqttClient = mqtt.connect('ws://localhost:9001');
-mongoose.connect('mongodb://127.0.0.1:27017/beeline', { useNewUrlParser: true, useUnifiedTopology: true });
+const mqtt = require("mqtt");
+const angle = require('./models/angle');
+const mqttClient = mqtt.connect('mqtt://localhost:1883');
+mongoose.connect('mongodb://127.0.0.1:27017/beeline', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
 // invoke an instance of express application.
 const app = express();
 app.set('views', path.join(__dirname, 'views'));
@@ -21,7 +26,9 @@ app.set('view engine', 'ejs');
 app.use(morgan('dev'));
 
 // initialize body-parser to parse incoming parameters requests to req.body
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({
+    extended: true
+}));
 
 // initialize cookie-parser to allow us access the cookies stored in the browser. 
 app.use(cookieParser());
@@ -42,7 +49,7 @@ app.use(session({
 // This usually happens when you stop your express server after login, your cookie still remains saved in the browser.
 app.use((req, res, next) => {
     if (req.cookies.user_sid && !req.session.user) {
-        res.clearCookie('user_sid');        
+        res.clearCookie('user_sid');
     }
     next();
 });
@@ -54,7 +61,7 @@ const sessionChecker = (req, res, next) => {
         res.redirect('/dashboard');
     } else {
         next();
-    }    
+    }
 };
 
 
@@ -71,19 +78,19 @@ app.route('/register')
     })
     .post((req, res) => {
         User.create({
-            name: req.body.name,
-            email: req.body.email,
-            password: req.body.password
-        })
-        .then(user => {
-            console.log(user);
-            req.session.user = user.dataValues;
-            
-            res.redirect('/');
-        })
-        .catch(error => {
-            res.redirect('/register');
-        });
+                name: req.body.name,
+                email: req.body.email,
+                password: req.body.password
+            })
+            .then(user => {
+                console.log(user);
+                req.session.user = user.dataValues;
+
+                res.redirect('/');
+            })
+            .catch(error => {
+                res.redirect('/register');
+            });
     });
 
 
@@ -95,8 +102,10 @@ app.route('/login')
     .post((req, res) => {
         var email = req.body.email,
             password = req.body.password;
-        
-        User.findOne({ email: email}).then(function (user) {
+
+        User.findOne({
+            email: email
+        }).then(function (user) {
             if (!user) {
                 console.log(user);
                 console.log('login failed');
@@ -130,16 +139,6 @@ app.get('/arrow', (req, res) => {
     }
 });
 
-app.post('/dashboard', (req, res) => {
-    if (req.session.user && req.cookies.user_sid){
-        client.subscribe('arrow', function (err) {
-            if (!err) {
-              client.publish('coe457/hello', 'Hello COE457 from node.js')
-            }
-          })
-    }
-});
-
 
 // route for user logout
 app.get('/logout', (req, res) => {
@@ -154,7 +153,7 @@ app.get('/logout', (req, res) => {
 
 // route for handling 404 requests(unavailable routes)
 app.use(function (req, res, next) {
-  res.status(404).send("Sorry can't find that!")
+    res.status(404).send("Sorry can't find that!")
 });
 
 mqttClient.on('connect', function () {
@@ -163,8 +162,7 @@ mqttClient.on('connect', function () {
     mqttClient.subscribe('coordinates', function (err) {
         if (!err) {
             console.log('Subscribed to coordinates topic');
-        }
-        else {
+        } else {
             console.log(err);
         }
     });
@@ -172,13 +170,15 @@ mqttClient.on('connect', function () {
 
 mqttClient.on('message', function (topic, message) {
     if (topic === 'coordinates') {
-		// make sure the topic is correct
-        var accJSON = JSON.parse(message.toString());
+        // make sure the topic is correct
+        var messageJson = JSON.parse(message.toString());
+        console.log(messageJson);
+        angle.create({angle: messageJson}).then(function (params) {
+            console.log(params._id);
+        });
         // do stuff with the accJSON
     }
 })
-
-module.exports = mqttClient;
 
 // start the express server
 app.listen(app.get('port'), () => console.log(`App started on port ${app.get('port')}`));
