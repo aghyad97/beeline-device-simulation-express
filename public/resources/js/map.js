@@ -59,7 +59,12 @@ $(document).ready(function () {
           var location2 = json.waypoints[1].location;
           var angle = angleFromCoordinate(location1[0], location1[1], location2[0], location2[1]);
           console.log(angle);
-          message = new Paho.MQTT.Message(String(angle));
+          let js = {
+            'angle': angle,
+            'location1' : location1,
+            'location2' : location2
+          };
+          message = new Paho.MQTT.Message(js);
           message.destinationName = "coordinates";
           client.send(message);
          

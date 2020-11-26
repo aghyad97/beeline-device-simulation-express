@@ -116,7 +116,9 @@ app.route('/login')
             } else {
                 console.log('dashboard');
                 req.session.user = user._id;
-                res.redirect('/dashboard');
+                res.render('dashboard', {
+                    name: user.name
+                });
             }
         });
     });
