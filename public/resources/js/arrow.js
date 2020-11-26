@@ -27,11 +27,15 @@ $(document).ready(function () {
     console.log('1');
     client.onMessageArrived = function (message) {
       console.log(message);
+      var json = JSON.parse(message.payloadString);
+      console.log(json);
+      // var messageJson = JSON.parse(message.toString());
+      // console.log(messageJson);
       $('.location img').css({
         'width': '10cm',
         'height': '10cm',
         'position': 'relative',
-        'transform': 'rotate(' + message.payloadString + 'deg)',
+        'transform': 'rotate(' + json.angle + 'deg)',
       })
     };
   }, 500);

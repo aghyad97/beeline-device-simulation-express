@@ -115,10 +115,8 @@ app.route('/login')
                 res.redirect('/login');
             } else {
                 console.log('dashboard');
-                req.session.user = user._id;
-                res.render('dashboard', {
-                    name: user.name
-                });
+                req.session.user = user.name;
+                res.redirect('/dashboard');
             }
         });
     });
@@ -127,7 +125,9 @@ app.route('/login')
 // route for user's dashboard
 app.get('/dashboard', (req, res) => {
     if (req.session.user && req.cookies.user_sid) {
-        res.render('dashboard');
+        res.render('dashboard', {
+            name: req.session.user
+        });
     } else {
         res.render('login');
     }
@@ -174,8 +174,7 @@ mqttClient.on('message', function (topic, message) {
     if (topic === 'coordinates') {
         // make sure the topic is correct
         var messageJson = JSON.parse(message.toString());
-        console.log(messageJson);
-        angle.create({angle: messageJson}).then(function (params) {
+        angle.create(messageJson).then(function (params) {
             console.log(params._id);
         });
         // do stuff with the accJSON

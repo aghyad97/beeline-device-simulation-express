@@ -64,7 +64,7 @@ $(document).ready(function () {
             'location1' : location1,
             'location2' : location2
           };
-          message = new Paho.MQTT.Message(js);
+          message = new Paho.MQTT.Message(JSON.stringify(js));
           message.destinationName = "coordinates";
           client.send(message);
          
